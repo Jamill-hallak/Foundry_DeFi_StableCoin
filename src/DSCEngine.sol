@@ -230,6 +230,15 @@ function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) 
 
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
+    
+      function getAccountInformation(address user)
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        
+        (totalDscMinted,collateralValueInUsd) = _getAccountInformation(user);
+    }
 /*
  * @param tokenCollateralAddress: the address of the token to deposit as collateral
  * @param amountCollateral: The amount of collateral to deposit
