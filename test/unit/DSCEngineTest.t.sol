@@ -8,7 +8,7 @@ import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
-
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 contract DSCEngineTest is Test {
     DeployDSC deployer;
     DecentralizedStableCoin dsc;
@@ -19,15 +19,20 @@ contract DSCEngineTest is Test {
     address ethUsdPriceFeed;
     address wbtcUsdPriceFeed;
     address public USER = makeAddr("user");
+     address public USER2 = makeAddr("user2");
     uint256 public constant AMOUNT_COLLATERAL = 10 ether;
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
-   uint256 public constant amountToMint = 100 ether;
+    uint256 public constant amountToMint = 100 ether;
+     int256 public constant New_ETH_USD_PRICE = 15e8;
+
     function setUp() public {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
         (ethUsdPriceFeed,wbtcUsdPriceFeed, weth,wbtc,) = config.activeNetworkConfig();
          ERC20Mock(weth).mint(USER, STARTING_ERC20_BALANCE);
          ERC20Mock(wbtc).mint(USER, STARTING_ERC20_BALANCE);
+         ERC20Mock(weth).mint(USER2, 11*STARTING_ERC20_BALANCE);
+         ERC20Mock(wbtc).mint(USER2, STARTING_ERC20_BALANCE);
     }
 
 
@@ -58,7 +63,7 @@ contract DSCEngineTest is Test {
         assertEq(expectedUsd, actualUsd);
     }
 
- function testGetTokenAmountFromUsd() public {
+ function testGetTokenAmountFromUsd() public view {
         // If we want $100 of WETH @ $2000/WETH, that would be 0.05 WETH
         uint256 expectedWeth = 0.05 ether;
         uint256 amountWeth = dsce.getTokenAmountFromUsd(weth, 100 ether);
@@ -97,4 +102,73 @@ contract DSCEngineTest is Test {
         assertEq(totalDscMinted, 0);
         assertEq(expectedDepositedAmount, AMOUNT_COLLATERAL);
     }
+     /////////////////////////////
+    // Mint Tests //
+    /////////////////////////////
+
+    function testRevertMintWith_BreaksHealthFactor()public{
+        vm.startPrank(USER);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__BreaksHealthFactor.selector,0));
+        dsce.mintDsc(amountToMint);
+        vm.stopPrank();
+    }
+
+    function testCanMintDSC () public depositedCollateral{
+         vm.startPrank(USER);
+         dsce.mintDsc(amountToMint);
+         vm.stopPrank();
+         (uint256 amountMinted,)=dsce.getAccountInformation(USER);
+         assertEq(amountMinted, amountToMint);
+    }
+
+/////////////////////////////
+    // Redeem Tests //
+    /////////////////////////////
+
+    function testRedeemCollateralForDsc()public depositedCollateral{
+         vm.startPrank(USER);
+         dsce.mintDsc(amountToMint);
+         dsc.approve(address(dsce), amountToMint);
+         (uint256 amountMinted,)=dsce.getAccountInformation(USER);
+         dsce.redeemCollateralForDsc(weth,AMOUNT_COLLATERAL/2,amountMinted/2);
+        
+         vm.stopPrank();
+         (uint256 amountBurn,)=dsce.getAccountInformation(USER);
+         assertEq(50 ether, amountBurn);
+
+        
+    }
+    function testdepositCollaterAndMintDsc () public {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollaterAndMintDsc(weth, AMOUNT_COLLATERAL,amountToMint);
+        vm.stopPrank();
+        (uint256 amountMinted,)=dsce.getAccountInformation(USER);
+        assertEq(amountMinted,amountToMint);
+    }
+//      function testLiquidate() public {
+//         vm.startPrank(USER);
+//         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+//         dsc.approve(address(dsce), amountToMint);
+//         dsce.depositCollaterAndMintDsc(weth, AMOUNT_COLLATERAL,amountToMint);
+//          ( ,uint256 before)=dsce.getAccountInformation(USER);
+//          console.log("before",before);
+//         vm.stopPrank();
+
+
+//         vm.startPrank(USER2);
+//         MockV3Aggregator(ethUsdPriceFeed).updateAnswer(int256(New_ETH_USD_PRICE));
+//         ERC20Mock(weth).approve(address(dsce), 2*AMOUNT_COLLATERAL);
+//         dsce.depositCollaterAndMintDsc(weth, 2*AMOUNT_COLLATERAL,amountToMint);
+        
+//         ( ,uint256 user2mit)=dsce.getAccountInformation(USER);
+//         console.log("aftere",user2mit);
+//         dsc.approve(address(dsce),amountToMint);
+//         dsce.liquidate(weth,USER,amountToMint);
+//         ( ,uint256 afterliq)=dsce.getAccountInformation(USER);
+//         // assertEq(afterliq, 0);
+//         vm.stopPrank();
+// }
+
+
 }

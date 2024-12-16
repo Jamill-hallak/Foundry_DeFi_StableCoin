@@ -28,6 +28,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8//interfaces/AggregatorV3Interface.sol";
+import {Test, console} from "forge-std/Test.sol";
 
 /*
  * @title DSCEngine
@@ -168,7 +169,9 @@ event CollateralRedeemed(address indexed redeemedFrom, address indexed redeemedT
 //   Private & Internal View Functions   //
 ///////////////////////////////////////////
 
-function _redeemCollateral(address tokenCollateralAddress, address from, address to,uint256 amountCollateral) private {
+function _redeemCollateral( address from, address to,address tokenCollateralAddress,
+uint256 amountCollateral) private {
+    
     s_collateralDeposited[from][tokenCollateralAddress] -= amountCollateral;
     emit CollateralRedeemed(from, to, tokenCollateralAddress, amountCollateral);
 
@@ -176,12 +179,15 @@ function _redeemCollateral(address tokenCollateralAddress, address from, address
     if(!success){
         revert DSCEngine__TransferFailed();
     }
-            }
+}
+
+
+   
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
 
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-
+         
         return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
@@ -215,19 +221,32 @@ function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) 
     //   Public & External View Functions   //
     //////////////////////////////////////////
 
+ function calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
     function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUsd) {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address token = s_collateralTokens[i];
             uint256 amount = s_collateralDeposited[user][token];
+            if(s_collateralDeposited[user][token]>0){
             totalCollateralValueInUsd += getUsdValue(token, amount);
-        }
+        }}
+       
         return totalCollateralValueInUsd;
     }
 
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
-
+        
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
     
@@ -260,17 +279,16 @@ function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) 
  * This function burns DSC and redeems underlying collateral in one transaction
  */
 function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn) external {
-    burnDsc(amountDscToBurn);
+     burnDsc(amountDscToBurn);
     redeemCollateral(tokenCollateralAddress, amountCollateral);
+       
 }
 
  function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
+     
     _redeemCollateral(msg.sender, msg.sender, tokenCollateralAddress, amountCollateral);
     _revertIfHealthFactorIsBroken(msg.sender);
-}
-
-  
-
+ }
    function burnDsc(uint256 amount) public moreThanZero(amount){
     _burnDsc(amount, msg.sender, msg.sender);
     _revertIfHealthFactorIsBroken(msg.sender);
@@ -286,9 +304,7 @@ function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCo
     uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
 
     uint256 totalCollateralRedeemed = tokenAmountFromDebtCovered + bonusCollateral;
-
     _redeemCollateral(user, msg.sender, collateral, totalCollateralRedeemed);
-
     _burnDsc(debtToCover, user, msg.sender);
 
     uint256 endingUserHealthFactor = _healthFactor(user);
@@ -306,5 +322,65 @@ function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCo
     (, int256 price,,,) = priceFeed.latestRoundData();
 
     return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
-              }
+                
+}
+
+function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDeposited[user][token];
+    }
+    
+ function getAdditionalFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getLiquidationPrecision() external pure returns (uint256) {
+        return LIQUIDATION_PRECISION;
+    }
+
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+
+    function getDsc() external view returns (address) {
+        return address(i_dsc);
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
+
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
+    }
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+      
+
+       
+
+       function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) return type(uint256).max;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+    }
 }
