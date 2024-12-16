@@ -15,13 +15,14 @@ contract invariants is StdInvariant, Test {
     DSCEngine dsce;
     DecentralizedStableCoin dsc;
     HelperConfig config;
+    Handler handler;
     address weth;
     address wbtc;
     function setUp() external {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
         (,,weth, wbtc, ) = config.activeNetworkConfig();
-      Handler handler = new Handler(dsce,dsc);
+        handler = new Handler(dsce,dsc);
         targetContract(address(handler));
     }
 
@@ -32,6 +33,21 @@ contract invariants is StdInvariant, Test {
 
     uint256 wethValue = dsce.getUsdValue(weth, totalWethDeposited);
     uint256 wbtcValue = dsce.getUsdValue(wbtc, totalWbtcDeposited);
+
+    console.log("wethValue: %s", wethValue);
+    console.log("wbtcValue: %s", wbtcValue);
+    console.log("totalSupply: %s", totalSupply);
+    console.log("mint called: %s", handler.time());
     assert(wethValue + wbtcValue >= totalSupply);
 }
+
+function invariant_gettersCantRevert() public  {
+        dsce.getAdditionalFeedPrecision();
+        dsce.getCollateralTokens();
+        dsce.getLiquidationBonus();
+        dsce.getLiquidationThreshold();
+        dsce.getMinHealthFactor();
+        dsce.getPrecision();
+        dsce.getDsc();
+        }
 }
