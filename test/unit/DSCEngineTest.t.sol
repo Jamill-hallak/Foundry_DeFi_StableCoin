@@ -151,8 +151,8 @@ contract DSCEngineTest is Test {
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
         dsc.approve(address(dsce), amountToMint);
         dsce.depositCollaterAndMintDsc(weth, AMOUNT_COLLATERAL,amountToMint);
-         ( uint256 Db,uint256 before)=dsce.getAccountInformation(USER);
-         console.log("before",before);
+        
+         
         vm.stopPrank();
 
 
@@ -161,13 +161,13 @@ contract DSCEngineTest is Test {
         ERC20Mock(weth).approve(address(dsce), 2*AMOUNT_COLLATERAL);
         dsce.depositCollaterAndMintDsc(weth, 2*AMOUNT_COLLATERAL,amountToMint);
         
-        ( uint256 Da,uint256 user2mit)=dsce.getAccountInformation(USER);
+        
         
         dsc.approve(address(dsce),amountToMint);
         dsce.liquidate(weth,USER,amountToMint);
         ( ,uint256 afterliq)=dsce.getAccountInformation(USER);
-        console.log("aftere",afterliq);
-        // assertEq(afterliq, 0);
+       
+        assertEq(afterliq, 70000000000000000020);
         vm.stopPrank();
 }
 
