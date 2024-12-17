@@ -77,7 +77,7 @@ contract DSCEngineTest is StdCheats, Test {
         feedAddresses.push(ethUsdPriceFeed);
         feedAddresses.push(btcUsdPriceFeed);
 
-        vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
+        vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch.selector);
         new DSCEngine(tokenAddresses, feedAddresses, address(dsc));
     }
 
@@ -85,14 +85,14 @@ contract DSCEngineTest is StdCheats, Test {
     // Price Tests //
     //////////////////
 
-    function testGetTokenAmountFromUsd() public {
+    function testGetTokenAmountFromUsd() public view {
         // If we want $100 of WETH @ $2000/WETH, that would be 0.05 WETH
         uint256 expectedWeth = 0.05 ether;
         uint256 amountWeth = dsce.getTokenAmountFromUsd(weth, 100 ether);
         assertEq(amountWeth, expectedWeth);
     }
 
-    function testGetUsdValue() public {
+    function testGetUsdValue() public view {
         uint256 ethAmount = 15e18;
         // 15e18 ETH * $2000/ETH = $30,000e18
         uint256 expectedUsd = 30_000e18;
@@ -438,7 +438,8 @@ contract DSCEngineTest is StdCheats, Test {
 
         MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatedPrice);
         uint256 userHealthFactor = dsce.getHealthFactor(user);
-
+      ( ,uint256 beforeliq)=dsce.getAccountInformation(user);
+     
         ERC20Mock(weth).mint(liquidator, collateralToCover);
 
         vm.startPrank(liquidator);
@@ -475,6 +476,7 @@ contract DSCEngineTest is StdCheats, Test {
 
     function testLiquidatorTakesOnUsersDebt() public liquidated {
         (uint256 liquidatorDscMinted,) = dsce.getAccountInformation(liquidator);
+        
         assertEq(liquidatorDscMinted, amountToMint);
     }
 
@@ -486,22 +488,22 @@ contract DSCEngineTest is StdCheats, Test {
     ///////////////////////////////////
     // View & Pure Function Tests //
     //////////////////////////////////
-    function testGetCollateralTokenPriceFeed() public {
+    function testGetCollateralTokenPriceFeed() public view{
         address priceFeed = dsce.getCollateralTokenPriceFeed(weth);
         assertEq(priceFeed, ethUsdPriceFeed);
     }
 
-    function testGetCollateralTokens() public {
+    function testGetCollateralTokens() public view {
         address[] memory collateralTokens = dsce.getCollateralTokens();
         assertEq(collateralTokens[0], weth);
     }
 
-    function testGetMinHealthFactor() public {
+    function testGetMinHealthFactor() public view {
         uint256 minHealthFactor = dsce.getMinHealthFactor();
         assertEq(minHealthFactor, MIN_HEALTH_FACTOR);
     }
 
-    function testGetLiquidationThreshold() public {
+    function testGetLiquidationThreshold() public view {
         uint256 liquidationThreshold = dsce.getLiquidationThreshold();
         assertEq(liquidationThreshold, LIQUIDATION_THRESHOLD);
     }
@@ -531,12 +533,12 @@ contract DSCEngineTest is StdCheats, Test {
         assertEq(collateralValue, expectedCollateralValue);
     }
 
-    function testGetDsc() public {
+    function testGetDsc() public view {
         address dscAddress = dsce.getDsc();
         assertEq(dscAddress, address(dsc));
     }
 
-    function testLiquidationPrecision() public {
+    function testLiquidationPrecision() public view {
         uint256 expectedLiquidationPrecision = 100;
         uint256 actualLiquidationPrecision = dsce.getLiquidationPrecision();
         assertEq(actualLiquidationPrecision, expectedLiquidationPrecision);

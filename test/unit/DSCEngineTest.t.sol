@@ -23,7 +23,7 @@ contract DSCEngineTest is Test {
     uint256 public constant AMOUNT_COLLATERAL = 10 ether;
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
     uint256 public constant amountToMint = 100 ether;
-     int256 public constant New_ETH_USD_PRICE = 15e8;
+     int256 public constant New_ETH_USD_PRICE = 18e8;
 
     function setUp() public {
         deployer = new DeployDSC();
@@ -47,7 +47,7 @@ contract DSCEngineTest is Test {
         feedAddresses.push(ethUsdPriceFeed);
         feedAddresses.push(wbtcUsdPriceFeed);
 
-        vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
+        vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch.selector);
         new DSCEngine(tokenAddresses, feedAddresses, address(dsc));
     }
 
@@ -146,29 +146,30 @@ contract DSCEngineTest is Test {
         (uint256 amountMinted,)=dsce.getAccountInformation(USER);
         assertEq(amountMinted,amountToMint);
     }
-//      function testLiquidate() public {
-//         vm.startPrank(USER);
-//         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-//         dsc.approve(address(dsce), amountToMint);
-//         dsce.depositCollaterAndMintDsc(weth, AMOUNT_COLLATERAL,amountToMint);
-//          ( ,uint256 before)=dsce.getAccountInformation(USER);
-//          console.log("before",before);
-//         vm.stopPrank();
+     function testLiquidate() public {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsc.approve(address(dsce), amountToMint);
+        dsce.depositCollaterAndMintDsc(weth, AMOUNT_COLLATERAL,amountToMint);
+         ( uint256 Db,uint256 before)=dsce.getAccountInformation(USER);
+         console.log("before",before);
+        vm.stopPrank();
 
 
-//         vm.startPrank(USER2);
-//         MockV3Aggregator(ethUsdPriceFeed).updateAnswer(int256(New_ETH_USD_PRICE));
-//         ERC20Mock(weth).approve(address(dsce), 2*AMOUNT_COLLATERAL);
-//         dsce.depositCollaterAndMintDsc(weth, 2*AMOUNT_COLLATERAL,amountToMint);
+        vm.startPrank(USER2);
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(int256(New_ETH_USD_PRICE));
+        ERC20Mock(weth).approve(address(dsce), 2*AMOUNT_COLLATERAL);
+        dsce.depositCollaterAndMintDsc(weth, 2*AMOUNT_COLLATERAL,amountToMint);
         
-//         ( ,uint256 user2mit)=dsce.getAccountInformation(USER);
-//         console.log("aftere",user2mit);
-//         dsc.approve(address(dsce),amountToMint);
-//         dsce.liquidate(weth,USER,amountToMint);
-//         ( ,uint256 afterliq)=dsce.getAccountInformation(USER);
-//         // assertEq(afterliq, 0);
-//         vm.stopPrank();
-// }
+        ( uint256 Da,uint256 user2mit)=dsce.getAccountInformation(USER);
+        
+        dsc.approve(address(dsce),amountToMint);
+        dsce.liquidate(weth,USER,amountToMint);
+        ( ,uint256 afterliq)=dsce.getAccountInformation(USER);
+        console.log("aftere",afterliq);
+        // assertEq(afterliq, 0);
+        vm.stopPrank();
+}
 
 
 }

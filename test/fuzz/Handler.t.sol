@@ -41,6 +41,8 @@ contract Handler is Test {
     vm.stopPrank();
     userWithCollaterlDeposited.push(msg.sender);
 }
+
+
 function redeemCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
     ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
     uint256 maxCollateralToRedeem = dsce.getCollateralBalanceOfUser(address(collateral), msg.sender);
@@ -54,12 +56,21 @@ function redeemCollateral(uint256 collateralSeed, uint256 amountCollateral) publ
    
 }
 
+ function liquidate(uint256 collateralSeed, address userToBeLiquidated, uint256 debtToCover) public {
+        uint256 minHealthFactor = dsce.getMinHealthFactor();
+        uint256 userHealthFactor = dsce.getHealthFactor(userToBeLiquidated);
+        if (userHealthFactor >= minHealthFactor) {
+            return;
+        }
+        debtToCover = bound(debtToCover, 1, uint256(type(uint96).max));
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        dsce.liquidate(address(collateral), userToBeLiquidated, debtToCover);
+    }
 function mintDsc(uint256 amount,uint256 addressSeed) public {
     if( userWithCollaterlDeposited.length == 0)
     {
         return;
         } 
-
     address sender = userWithCollaterlDeposited[addressSeed %
     userWithCollaterlDeposited.length ];
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(sender);
@@ -80,12 +91,25 @@ function mintDsc(uint256 amount,uint256 addressSeed) public {
     time ++ ;
 }
 
-// //THIS BREAKS OUR INVARIANT TEST SUITE!!!
-    
-    function updateCollateralPrice(uint96 newPrice) public {
-    int256 newPriceInt = int256(uint256(newPrice));
-    ethUsdPriceFeed.updateAnswer(newPriceInt);
+
+ function burnDsc(uint256 amountDsc) public {
+        // Must burn more than 0
+        amountDsc = bound(amountDsc, 0, dsc.balanceOf(msg.sender));
+        if (amountDsc == 0) {
+            return;
+        }
+        vm.startPrank(msg.sender);
+        dsc.approve(address(dsce), amountDsc);
+        dsce.burnDsc(amountDsc);
+        vm.stopPrank();
     }
+
+ // //THIS BREAKS OUR INVARIANT TEST SUITE!!!
+    
+//     function updateCollateralPrice(uint96 newPrice) public {
+//     int256 newPriceInt = int256(uint256(newPrice));
+//     ethUsdPriceFeed.updateAnswer(newPriceInt);
+//     }
 
 
 
