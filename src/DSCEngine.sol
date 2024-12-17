@@ -27,9 +27,9 @@ pragma solidity 0.8.20;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8//interfaces/AggregatorV3Interface.sol";
+//import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8//interfaces/AggregatorV3Interface.sol";
 import {Test, console} from "forge-std/Test.sol";
-
+import { OracleLib, AggregatorV3Interface } from "./libraries/OracleLib.sol";
 /*
  * @title DSCEngine
  * @author Jamil hallack
@@ -50,9 +50,13 @@ import {Test, console} from "forge-std/Test.sol";
  * @notice This contract is based on the MakerDAO DSS system
  */
 contract DSCEngine is ReentrancyGuard {
+
+
+    using OracleLib for AggregatorV3Interface;
     ///////////////////
     //     Errors    //
     ///////////////////
+   
 
     error DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
     error DSCEngine__NeedsMoreThanZero();
@@ -245,7 +249,7 @@ function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) 
 
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
         
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
@@ -319,7 +323,7 @@ function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCo
 
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
     AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-    (, int256 price,,,) = priceFeed.latestRoundData();
+    (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
 
     return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
                 

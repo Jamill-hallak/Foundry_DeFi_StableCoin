@@ -7,6 +7,8 @@ import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 import {Test,console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
+
 contract Handler is Test {
     DSCEngine dsce;
     DecentralizedStableCoin dsc;
@@ -16,7 +18,7 @@ contract Handler is Test {
     uint256 constant MAX_DEPOSIT_SIZE = type(uint96).max;
     uint256 public time ;
     address [] public userWithCollaterlDeposited;
-
+     MockV3Aggregator public ethUsdPriceFeed;
     constructor(DSCEngine _engine, DecentralizedStableCoin _dsc) {
         dsce = _engine;
         dsc = _dsc;
@@ -24,6 +26,7 @@ contract Handler is Test {
         address[] memory collateralTokens = dsce.getCollateralTokens();
         weth = ERC20Mock(collateralTokens[0]);
         wbtc = ERC20Mock(collateralTokens[1]);
+        ethUsdPriceFeed =MockV3Aggregator(dsce.getCollateralTokenPriceFeed(address(weth)));
     }
 
     function depositCollateral (uint256 collateralSeed, uint256 amountCollateral) public {
@@ -56,7 +59,7 @@ function mintDsc(uint256 amount,uint256 addressSeed) public {
     {
         return;
         } 
-        
+
     address sender = userWithCollaterlDeposited[addressSeed %
     userWithCollaterlDeposited.length ];
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(sender);
@@ -76,6 +79,16 @@ function mintDsc(uint256 amount,uint256 addressSeed) public {
     vm.stopPrank();
     time ++ ;
 }
+
+// //THIS BREAKS OUR INVARIANT TEST SUITE!!!
+    
+    function updateCollateralPrice(uint96 newPrice) public {
+    int256 newPriceInt = int256(uint256(newPrice));
+    ethUsdPriceFeed.updateAnswer(newPriceInt);
+    }
+
+
+
     // Helper Functions
 function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock){
     if(collateralSeed % 2 == 0){
