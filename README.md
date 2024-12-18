@@ -7,7 +7,7 @@ This repository is a project based on the **Cyfrin Foundry Solidity Course**. It
 
 ## About
 
-The project demonstrates the creation of a decentralized stablecoin system with functionalities for collateral deposits and token minting. It focuses on core testing strategies, including fuzz and invariant testing, ensuring the robustness of the system. The repository is streamlined and free from third-party tools like Slither and GitLab, focusing purely on Foundry's capabilities.
+The project demonstrates the creation of a decentralized stablecoin system with functionalities for collateral deposits and token minting. It focuses on core testing strategies, including fuzz and invariant testing, ensuring the robustness of the system, focusing purely on Foundry's capabilities.
 
 ---
 
@@ -22,7 +22,7 @@ The project demonstrates the creation of a decentralized stablecoin system with 
 
 1. Clone the repository:
    ```bash
-   git clone (https://github.com/Jamill-hallak/Foundry_DeFi_StableCoin.git)
+   git clone https://github.com/Jamill-hallak/Foundry_DeFi_StableCoin.git
    cd Foundry_DeFi_StableCoin 
    forge build
    ```
